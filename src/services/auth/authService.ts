@@ -54,10 +54,11 @@ export async function signup(
 }
 
 /**
- * Login existing user
+ * Login existing user with email and password
+ * Authenticates via Firebase Auth, then fetches the full user profile from Firestore
  * @param email User email
  * @param password User password
- * @returns Promise with user data
+ * @returns Promise with authenticated user profile data
  */
 export async function login(
   email: string,
@@ -71,13 +72,14 @@ export async function login(
     );
     const firebaseUser = userCredential.user;
 
-    // Fetch user data from Firestore
-    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-    if (!userDoc.exists()) {
-      throw new Error('User document not found');
+    const userDocRef = doc(db, COLLECTIONS.USERS, firebaseUser.uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (!userDocSnap.exists()) {
+      throw new Error(`User profile not found for uid: ${firebaseUser.uid}`);
     }
 
-    return userDoc.data() as User;
+    return userDocSnap.data() as User;
   } catch (error) {
     console.error('Login error:', error);
     throw error;
@@ -85,7 +87,7 @@ export async function login(
 }
 
 /**
- * Logout current user
+ * Logout current user and clear Firebase session
  * @returns Promise<void>
  */
 export async function logout(): Promise<void> {
@@ -98,25 +100,31 @@ export async function logout(): Promise<void> {
 }
 
 /**
- * Get current authenticated user
- * @returns Promise with user data or null
+ * Get currently authenticated user with Firestore profile data
+ * Listens for the current auth state once, then fetches the corresponding
+ * user profile document from Firestore
+ * @returns Promise with user profile data, or null if not authenticated
  */
 export async function getCurrentUser(): Promise<User | null> {
   return new Promise((resolve) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       unsubscribe();
+
       if (!firebaseUser) {
         resolve(null);
         return;
       }
 
       try {
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (userDoc.exists()) {
-          resolve(userDoc.data() as User);
-        } else {
+        const userDocRef = doc(db, COLLECTIONS.USERS, firebaseUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (!userDocSnap.exists()) {
           resolve(null);
+          return;
         }
+
+        resolve(userDocSnap.data() as User);
       } catch (error) {
         console.error('Get current user error:', error);
         resolve(null);
