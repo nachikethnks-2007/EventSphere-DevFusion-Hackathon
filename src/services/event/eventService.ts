@@ -18,6 +18,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { Event, CreateEventData, UpdateEventData } from '../../types/event';
+import { COLLECTIONS } from '../../constants/collections';
 
 /**
  * Create a new event
@@ -32,17 +33,21 @@ export async function createEvent(
   try {
     const eventWithMetadata = {
       ...eventData,
+      tags: eventData.tags ?? [],
       organizerId,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };
 
-    const docRef = await addDoc(collection(db, 'events'), eventWithMetadata);
-    
-    const eventDoc = await getDoc(docRef);
+    const docRef = await addDoc(
+      collection(db, COLLECTIONS.EVENTS),
+      eventWithMetadata
+    );
+
+    const eventDocSnap = await getDoc(docRef);
     return {
-      id: eventDoc.id,
-      ...eventDoc.data(),
+      id: eventDocSnap.id,
+      ...eventDocSnap.data(),
     } as Event;
   } catch (error) {
     console.error('Create event error:', error);
@@ -57,14 +62,14 @@ export async function createEvent(
 export async function fetchAllEvents(): Promise<Event[]> {
   try {
     const q = query(
-      collection(db, 'events'),
+      collection(db, COLLECTIONS.EVENTS),
       orderBy('createdAt', 'desc')
     );
-    
+
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
+    return querySnapshot.docs.map((eventDoc) => ({
+      id: eventDoc.id,
+      ...eventDoc.data(),
     })) as Event[];
   } catch (error) {
     console.error('Fetch events error:', error);
@@ -79,14 +84,16 @@ export async function fetchAllEvents(): Promise<Event[]> {
  */
 export async function fetchEventById(eventId: string): Promise<Event> {
   try {
-    const eventDoc = await getDoc(doc(db, 'events', eventId));
-    if (!eventDoc.exists()) {
-      throw new Error('Event not found');
+    const eventDocRef = doc(db, COLLECTIONS.EVENTS, eventId);
+    const eventDocSnap = await getDoc(eventDocRef);
+
+    if (!eventDocSnap.exists()) {
+      throw new Error(`Event not found for id: ${eventId}`);
     }
 
     return {
-      id: eventDoc.id,
-      ...eventDoc.data(),
+      id: eventDocSnap.id,
+      ...eventDocSnap.data(),
     } as Event;
   } catch (error) {
     console.error('Fetch event error:', error);
@@ -104,15 +111,15 @@ export async function fetchEventsByOrganizer(
 ): Promise<Event[]> {
   try {
     const q = query(
-      collection(db, 'events'),
+      collection(db, COLLECTIONS.EVENTS),
       where('organizerId', '==', organizerId),
       orderBy('createdAt', 'desc')
     );
-    
+
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
+    return querySnapshot.docs.map((eventDoc) => ({
+      id: eventDoc.id,
+      ...eventDoc.data(),
     })) as Event[];
   } catch (error) {
     console.error('Fetch organizer events error:', error);
@@ -131,7 +138,7 @@ export async function updateEvent(
   eventData: UpdateEventData
 ): Promise<void> {
   try {
-    const eventRef = doc(db, 'events', eventId);
+    const eventRef = doc(db, COLLECTIONS.EVENTS, eventId);
     await updateDoc(eventRef, {
       ...eventData,
       updatedAt: Timestamp.now(),
@@ -149,7 +156,7 @@ export async function updateEvent(
  */
 export async function deleteEvent(eventId: string): Promise<void> {
   try {
-    await deleteDoc(doc(db, 'events', eventId));
+    await deleteDoc(doc(db, COLLECTIONS.EVENTS, eventId));
   } catch (error) {
     console.error('Delete event error:', error);
     throw error;
