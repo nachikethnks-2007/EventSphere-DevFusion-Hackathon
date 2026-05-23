@@ -6,6 +6,7 @@ export type UserRole = 'attendee' | 'organizer';
 
 export interface User {
   uid: string;
+  name: string;
   email: string;
   role: UserRole;
   createdAt: string;

@@ -8,26 +8,27 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  User as FirebaseUser,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase/config';
 import { User, UserRole } from '../../types/user';
+import { COLLECTIONS } from '../../constants/collections';
 
 /**
  * Sign up a new user with email and password
  * @param email User email
  * @param password User password
+ * @param name User display name
  * @param role User role (attendee or organizer)
  * @returns Promise with user data
  */
 export async function signup(
   email: string,
   password: string,
+  name: string,
   role: UserRole
 ): Promise<User> {
   try {
-    // Create Firebase Auth user
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email,
@@ -35,15 +36,15 @@ export async function signup(
     );
     const firebaseUser = userCredential.user;
 
-    // Create user document in Firestore
     const userData: User = {
       uid: firebaseUser.uid,
+      name,
       email: firebaseUser.email!,
       role,
       createdAt: new Date().toISOString(),
     };
 
-    await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+    await setDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid), userData);
 
     return userData;
   } catch (error) {
