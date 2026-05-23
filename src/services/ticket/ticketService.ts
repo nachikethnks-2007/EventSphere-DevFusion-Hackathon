@@ -9,7 +9,6 @@ import {
   getDoc,
   getDocs,
   addDoc,
-  updateDoc,
   query,
   where,
   Timestamp,
@@ -17,35 +16,41 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { Ticket, CreateTicketData } from '../../types/ticket';
+import { COLLECTIONS } from '../../constants/collections';
 
 /**
- * Register a ticket for an event
- * @param ticketData Ticket data
+ * Register for an event (create a ticket/registration document)
+ * @param ticketData Ticket registration data
  * @returns Promise with created ticket
  */
-export async function registerTicket(
+export async function registerForEvent(
   ticketData: CreateTicketData
 ): Promise<Ticket> {
   try {
-    // Generate unique ticket ID
     const ticketId = generateTicketId();
+    const qrCodeData = `eventsphere://${ticketData.eventId}/${ticketId}`;
 
     const ticketWithMetadata = {
       ...ticketData,
       ticketId,
-      createdAt: Timestamp.now(),
+      ticketStatus: 'registered' as const,
+      qrCodeData,
+      registeredAt: Timestamp.now(),
       scanned: false,
     };
 
-    const docRef = await addDoc(collection(db, 'tickets'), ticketWithMetadata);
-    
-    const ticketDoc = await getDoc(docRef);
+    const docRef = await addDoc(
+      collection(db, COLLECTIONS.TICKETS),
+      ticketWithMetadata
+    );
+
+    const ticketDocSnap = await getDoc(docRef);
     return {
-      id: ticketDoc.id,
-      ...ticketDoc.data(),
+      id: ticketDocSnap.id,
+      ...ticketDocSnap.data(),
     } as Ticket;
   } catch (error) {
-    console.error('Register ticket error:', error);
+    console.error('Register for event error:', error);
     throw error;
   }
 }
@@ -63,24 +68,26 @@ function generateTicketId(): string {
 /**
  * Fetch ticket by ticket ID
  * @param ticketId Ticket ID
- * @returns Promise with ticket data
+ * @returns Promise with ticket data or null
  */
-export async function fetchTicketByTicketId(ticketId: string): Promise<Ticket | null> {
+export async function fetchTicketByTicketId(
+  ticketId: string
+): Promise<Ticket | null> {
   try {
     const q = query(
-      collection(db, 'tickets'),
+      collection(db, COLLECTIONS.TICKETS),
       where('ticketId', '==', ticketId)
     );
-    
+
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
       return null;
     }
 
-    const doc = querySnapshot.docs[0];
+    const ticketDoc = querySnapshot.docs[0];
     return {
-      id: doc.id,
-      ...doc.data(),
+      id: ticketDoc.id,
+      ...ticketDoc.data(),
     } as Ticket;
   } catch (error) {
     console.error('Fetch ticket error:', error);
@@ -89,22 +96,23 @@ export async function fetchTicketByTicketId(ticketId: string): Promise<Ticket | 
 }
 
 /**
- * Fetch tickets by user
- * @param userId User ID
+ * Fetch all tickets registered by a specific attendee
+ * @param attendeeId Attendee's user ID
  * @returns Promise with array of tickets
  */
-export async function fetchTicketsByUser(userId: string): Promise<Ticket[]> {
+export async function fetchTicketsByUser(
+  attendeeId: string
+): Promise<Ticket[]> {
   try {
     const q = query(
-      collection(db, 'tickets'),
-      where('userId', '==', userId),
-      where('scanned', '==', false)
+      collection(db, COLLECTIONS.TICKETS),
+      where('attendeeId', '==', attendeeId)
     );
-    
+
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
+    return querySnapshot.docs.map((ticketDoc) => ({
+      id: ticketDoc.id,
+      ...ticketDoc.data(),
     })) as Ticket[];
   } catch (error) {
     console.error('Fetch user tickets error:', error);
@@ -113,21 +121,23 @@ export async function fetchTicketsByUser(userId: string): Promise<Ticket[]> {
 }
 
 /**
- * Fetch tickets by event
+ * Fetch all tickets/registrations for a specific event
  * @param eventId Event ID
  * @returns Promise with array of tickets
  */
-export async function fetchTicketsByEvent(eventId: string): Promise<Ticket[]> {
+export async function fetchTicketsByEvent(
+  eventId: string
+): Promise<Ticket[]> {
   try {
     const q = query(
-      collection(db, 'tickets'),
+      collection(db, COLLECTIONS.TICKETS),
       where('eventId', '==', eventId)
     );
-    
+
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
+    return querySnapshot.docs.map((ticketDoc) => ({
+      id: ticketDoc.id,
+      ...ticketDoc.data(),
     })) as Ticket[];
   } catch (error) {
     console.error('Fetch event tickets error:', error);
@@ -137,25 +147,24 @@ export async function fetchTicketsByEvent(eventId: string): Promise<Ticket[]> {
 
 /**
  * Mark ticket as scanned (with duplicate prevention)
- * @param ticketId Ticket ID
+ * @param ticketId Ticket ID (Firestore document ID)
  * @returns Promise with success status and message
  */
 export async function markTicketAsScanned(
   ticketId: string
 ): Promise<{ success: boolean; message: string; ticket?: Ticket }> {
   try {
-    const ticketRef = doc(db, 'tickets', ticketId);
-    
-    // Use transaction to prevent duplicate scans
+    const ticketRef = doc(db, COLLECTIONS.TICKETS, ticketId);
+
     const result = await runTransaction(db, async (transaction) => {
-      const ticketDoc = await transaction.get(ticketRef);
-      
-      if (!ticketDoc.exists()) {
-        throw new Error('Ticket not found');
+      const ticketDocSnap = await transaction.get(ticketRef);
+
+      if (!ticketDocSnap.exists()) {
+        throw new Error(`Ticket not found for id: ${ticketId}`);
       }
 
-      const ticketData = ticketDoc.data() as Ticket;
-      
+      const ticketData = ticketDocSnap.data() as Ticket;
+
       if (ticketData.scanned) {
         return {
           success: false,
@@ -166,13 +175,14 @@ export async function markTicketAsScanned(
 
       transaction.update(ticketRef, {
         scanned: true,
+        ticketStatus: 'scanned' as const,
         scannedAt: Timestamp.now(),
       });
 
       return {
         success: true,
         message: 'Ticket scanned successfully',
-        ticket: { ...ticketData, scanned: true },
+        ticket: { ...ticketData, scanned: true, ticketStatus: 'scanned' as const },
       };
     });
 
@@ -188,14 +198,16 @@ export async function markTicketAsScanned(
  * @param eventId Event ID
  * @returns Promise with attendance count
  */
-export async function getEventAttendanceCount(eventId: string): Promise<number> {
+export async function getEventAttendanceCount(
+  eventId: string
+): Promise<number> {
   try {
     const q = query(
-      collection(db, 'tickets'),
+      collection(db, COLLECTIONS.TICKETS),
       where('eventId', '==', eventId),
       where('scanned', '==', true)
     );
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.size;
   } catch (error) {
