@@ -21,6 +21,16 @@ import { Event, CreateEventData, UpdateEventData } from '../../types/event';
 import { COLLECTIONS } from '../../constants/collections';
 
 /**
+ * Event filters interface
+ */
+export interface EventFilters {
+  category?: string;
+  city?: string;
+  date?: string;
+  priceType?: 'free' | 'paid';
+  searchQuery?: string;
+}
+/**
  * Create a new event
  * @param eventData Event data
  * @param organizerId Organizer's user ID
@@ -123,6 +133,61 @@ export async function fetchEventsByOrganizer(
     })) as Event[];
   } catch (error) {
     console.error('Fetch organizer events error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Filter events based on provided filters
+ * @param filters Event filters
+ * @returns Promise with array of filtered events
+ */
+export async function filterEvents(
+  filters: EventFilters
+): Promise<Event[]> {
+  try {
+    let q = query(collection(db, COLLECTIONS.EVENTS));
+
+    if (filters.category) {
+      q = query(q, where('category', '==', filters.category));
+    }
+
+    if (filters.city) {
+      q = query(q, where('city', '==', filters.city));
+    }
+
+    if (filters.date) {
+      q = query(q, where('date', '==', filters.date));
+    }
+
+    if (filters.priceType) {
+      q = query(q, where('priceType', '==', filters.priceType));
+    }
+
+    const querySnapshot = await getDocs(q);
+    const events = querySnapshot.docs.map((eventDoc) => ({
+      id: eventDoc.id,
+      ...eventDoc.data(),
+    })) as Event[];
+
+    if (filters.searchQuery) {
+      return events.filter((event) => {
+        const title = event.title.toLowerCase();
+        const tags = event.tags.map((tag) => tag.toLowerCase());
+        const category =(event.category ?? event.eventType ?? '').toLowerCase();
+        const searchQuery = filters.searchQuery.toLowerCase();
+
+        return (
+          title.includes(searchQuery) ||
+          tags.some((tag) => tag.includes(searchQuery)) ||
+          category.includes(searchQuery)
+        );
+      });
+    }
+
+    return events;
+  } catch (error) {
+    console.error('Filter events error:', error);
     throw error;
   }
 }

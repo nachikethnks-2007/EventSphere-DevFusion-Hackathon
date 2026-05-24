@@ -18,6 +18,9 @@ export interface Event {
   organizerId: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  category: string;
+  city: string;
+  priceType: 'free' | 'paid';
 }
 
 export interface CreateEventData {
