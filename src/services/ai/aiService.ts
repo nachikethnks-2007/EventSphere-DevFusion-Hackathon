@@ -9,35 +9,41 @@ import { GEMINI_API_KEY } from '../../constants/config';
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
+export interface GenerateDescriptionInput {
+  title: string;
+  category: string;
+  targetAudience: string;
+  location: string;
+  theme: string;
+}
+
 /**
- * Generate event description using Gemini AI
- * @param eventName Event name
- * @param eventType Event type (conference, workshop, party, etc.)
- * @param additionalContext Additional context about the event
- * @returns Promise with generated description
+ * Generate a professional event description using Gemini AI
+ * @param input Event details (title, category, targetAudience, location, theme)
+ * @returns Promise with generated description string
  */
 export async function generateEventDescription(
-  eventName: string,
-  eventType: string,
-  additionalContext?: string
+  input: GenerateDescriptionInput
 ): Promise<string> {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
-    const prompt = `Generate a compelling and professional event description for:
-    
-Event Name: ${eventName}
-Event Type: ${eventType}
-${additionalContext ? `Additional Context: ${additionalContext}` : ''}
+    const prompt = `Generate a professional and engaging event description for an event listing page.
+
+Title: ${input.title}
+Category: ${input.category}
+Target Audience: ${input.targetAudience}
+Location: ${input.location}
+Theme: ${input.theme}
 
 Requirements:
 - Keep it between 100-200 words
-- Make it engaging and professional
-- Highlight key benefits or takeaways
+- Make it engaging, concise, and professional
+- Highlight key benefits or takeaways for the target audience
 - Include a call to action
-- Use an enthusiastic but professional tone
+- Suitable for an event listing page
 
-Please provide only the description, no additional text.`;
+Provide only the description text, nothing else.`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
