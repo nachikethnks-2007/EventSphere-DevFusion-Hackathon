@@ -1,10 +1,13 @@
 /**
  * AI Service
- * Handles Gemini AI integration for event description generation
+ * Handles Gemini AI integration for event description generation and recommendations
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GEMINI_API_KEY } from '../../constants/config';
+import { Event } from '../../types/event';
+import { fetchAllEvents } from '../event/eventService';
+import { fetchTicketsByUser } from '../ticket/ticketService';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -136,5 +139,109 @@ Please provide only the suggestions, no additional text.`;
   } catch (error) {
     console.error('Generate event suggestions error:', error);
     return ['Networking Event', 'Workshop', 'Conference', 'Meetup', 'Webinar'];
+  }
+}
+
+export interface RecommendedEvent {
+  event: Event;
+  score: number;
+  reason?: string;
+}
+
+/**
+ * Recommend events for a user based on their registration history
+ * Scores events by matching categories, tags, and event types, then
+ * optionally generates a short Gemini-powered reason for the top picks
+ * @param userId User ID to generate recommendations for
+ * @param includeReasons Whether to generate Gemini-powered reason text (default false)
+ * @returns Promise with array of recommended events sorted by relevance
+ */
+export async function recommendEvents(
+  userId: string,
+  includeReasons: boolean = false
+): Promise<RecommendedEvent[]> {
+  try {
+    const [userTickets, allEvents] = await Promise.all([
+      fetchTicketsByUser(userId),
+      fetchAllEvents(),
+    ]);
+
+    const registeredEventIds = new Set(
+      userTickets.map((ticket) => ticket.eventId)
+    );
+
+    const attendedEvents = allEvents.filter((event) =>
+      registeredEventIds.has(event.id)
+    );
+
+    const userEventTypes = new Set(
+      attendedEvents.map((event) => event.eventType)
+    );
+
+    const userTags = new Set(
+      attendedEvents.flatMap((event) => event.tags)
+    );
+
+    const candidateEvents = allEvents.filter(
+      (event) => !registeredEventIds.has(event.id)
+    );
+
+    const scored: RecommendedEvent[] = candidateEvents.map((event) => {
+      let score = 0;
+
+      if (userEventTypes.has(event.eventType)) {
+        score += 3;
+      }
+
+      const matchingTags = event.tags.filter((tag) => userTags.has(tag));
+      score += matchingTags.length;
+
+      return { event, score };
+    });
+
+    const recommendations = scored
+      .filter((r) => r.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+
+    if (includeReasons && recommendations.length > 0) {
+      try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+
+        const eventSummaries = recommendations
+          .slice(0, 5)
+          .map((r) => `"${r.event.title}" (${r.event.eventType})`)
+          .join(', ');
+
+        const pastSummaries = attendedEvents
+          .slice(0, 5)
+          .map((e) => `"${e.title}" (${e.eventType})`)
+          .join(', ');
+
+        const prompt = `Given a user who attended: ${pastSummaries}
+We recommend: ${eventSummaries}
+
+For each recommended event, write a one-sentence reason (max 15 words) explaining why the user would enjoy it. Format as a numbered list matching the order above. Provide only the reasons, nothing else.`;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const reasons = response
+          .text()
+          .split('\n')
+          .map((line) => line.replace(/^\d+\.\s*/, '').trim())
+          .filter((line) => line.length > 0);
+
+        for (let i = 0; i < Math.min(reasons.length, recommendations.length); i++) {
+          recommendations[i].reason = reasons[i];
+        }
+      } catch (error) {
+        console.error('Generate recommendation reasons error:', error);
+      }
+    }
+
+    return recommendations;
+  } catch (error) {
+    console.error('Recommend events error:', error);
+    throw error;
   }
 }
