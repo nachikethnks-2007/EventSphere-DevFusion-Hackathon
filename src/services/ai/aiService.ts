@@ -70,7 +70,7 @@ export async function generateEventTags(
   description: string
 ): Promise<string[]> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = `Generate 5-8 relevant tags for this event:
 
@@ -113,7 +113,7 @@ export async function generateEventSuggestions(
   pastEvents: string[]
 ): Promise<string[]> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = `Based on the following user data, suggest 5 event types they might be interested in:
 
@@ -206,7 +206,7 @@ export async function recommendEvents(
 
     if (includeReasons && recommendations.length > 0) {
       try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         const eventSummaries = recommendations
           .slice(0, 5)
