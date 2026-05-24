@@ -26,7 +26,7 @@ export async function generateEventDescription(
   input: GenerateDescriptionInput
 ): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = `Generate a professional and engaging event description for an event listing page.
 
