@@ -9,4 +9,5 @@ export const COLLECTIONS = {
   TICKETS: 'tickets',
   WISHLISTS: 'wishlist',
   REVIEWS: 'reviews',
+  REFUNDS: 'refunds',
 } as const;
