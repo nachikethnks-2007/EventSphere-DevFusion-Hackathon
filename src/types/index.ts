@@ -7,3 +7,4 @@ export * from './user';
 export * from './event';
 export * from './ticket';
 export * from './wishlist';
+export * from './review';

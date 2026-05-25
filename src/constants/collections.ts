@@ -8,4 +8,5 @@ export const COLLECTIONS = {
   EVENTS: 'events',
   TICKETS: 'tickets',
   WISHLISTS: 'wishlist',
+  REVIEWS: 'reviews',
 } as const;
