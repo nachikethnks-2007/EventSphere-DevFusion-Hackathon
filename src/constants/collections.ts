@@ -10,4 +10,6 @@ export const COLLECTIONS = {
   WISHLISTS: 'wishlist',
   REVIEWS: 'reviews',
   REFUNDS: 'refunds',
+  PAYMENTS: 'payments',
+  PAYOUTS: 'payouts',
 } as const;
