@@ -171,11 +171,11 @@ export async function filterEvents(
     })) as Event[];
 
     if (filters.searchQuery) {
+      const searchQuery = filters.searchQuery.toLowerCase();
       return events.filter((event) => {
         const title = event.title.toLowerCase();
         const tags = event.tags.map((tag) => tag.toLowerCase());
         const category =(event.category ?? event.eventType ?? '').toLowerCase();
-        const searchQuery = filters.searchQuery.toLowerCase();
 
         return (
           title.includes(searchQuery) ||

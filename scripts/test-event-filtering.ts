@@ -200,10 +200,8 @@ function eventMatchesFilter(event: FilterableEvent, filters: EventFilters): bool
   if (filters.searchQuery) {
     const searchQuery = filters.searchQuery?.toLowerCase() ?? '';
     const title = event.title.toLowerCase();
-    console.log('DEBUG EVENT:', event);
     const tags = (event.tags ?? []).map((tag) => tag.toLowerCase());
     const category = (event.category ?? '').toLowerCase();
-    console.log('DEBUG EVENT:', event);
     const matchesSearch =
       title.includes(searchQuery) ||
       tags.some((tag) => tag.includes(searchQuery)) ||

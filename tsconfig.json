@@ -17,6 +17,7 @@
     "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
+    "types": ["vite/client"],
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src"],

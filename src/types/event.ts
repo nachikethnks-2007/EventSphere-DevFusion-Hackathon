@@ -21,6 +21,10 @@ export interface Event {
   category: string;
   city: string;
   priceType: 'free' | 'paid';
+  agenda?: string[];
+  speakers?: string[];
+  faq?: { question: string; answer: string }[];
+  venueMapUrl?: string;
 }
 
 export interface CreateEventData {
@@ -33,6 +37,10 @@ export interface CreateEventData {
   capacity: number;
   imageUrl?: string;
   tags?: string[];
+  agenda?: string[];
+  speakers?: string[];
+  faq?: { question: string; answer: string }[];
+  venueMapUrl?: string;
 }
 
 export interface UpdateEventData {
@@ -45,4 +53,8 @@ export interface UpdateEventData {
   capacity?: number;
   imageUrl?: string;
   tags?: string[];
+  agenda?: string[];
+  speakers?: string[];
+  faq?: { question: string; answer: string }[];
+  venueMapUrl?: string;
 }
