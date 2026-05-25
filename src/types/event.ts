@@ -21,6 +21,7 @@ export interface Event {
   category: string;
   city: string;
   priceType: 'free' | 'paid';
+  price?: number;
   agenda?: string[];
   speakers?: string[];
   faq?: { question: string; answer: string }[];
@@ -37,6 +38,8 @@ export interface CreateEventData {
   capacity: number;
   imageUrl?: string;
   tags?: string[];
+  priceType?: 'free' | 'paid';
+  price?: number;
   agenda?: string[];
   speakers?: string[];
   faq?: { question: string; answer: string }[];
@@ -53,6 +56,8 @@ export interface UpdateEventData {
   capacity?: number;
   imageUrl?: string;
   tags?: string[];
+  priceType?: 'free' | 'paid';
+  price?: number;
   agenda?: string[];
   speakers?: string[];
   faq?: { question: string; answer: string }[];

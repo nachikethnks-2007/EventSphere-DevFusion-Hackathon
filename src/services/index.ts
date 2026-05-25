@@ -18,6 +18,9 @@ export * from './qr/qrService';
 // AI Service
 export * from './ai/aiService';
 
+// Analytics Service
+export * from './analytics/analyticsService';
+
 // Wishlist Service
 export * from './wishlist/wishlistService';
 

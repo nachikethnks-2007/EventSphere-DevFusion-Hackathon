@@ -20,6 +20,7 @@ export interface Ticket {
   registeredAt: Timestamp;
   scanned: boolean;
   scannedAt?: Timestamp;
+  price?: number;
 }
 
 export interface CreateTicketData {

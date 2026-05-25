@@ -94,3 +94,23 @@ export function validateRequiredFields(
     return value !== undefined && value !== null && value !== '';
   });
 }
+
+/**
+ * Validate event price based on price type
+ * @param priceType The type of price ('free' or 'paid')
+ * @param price Optional price number
+ * @returns Boolean indicating if valid
+ */
+export function isValidEventPrice(
+  priceType: 'free' | 'paid' | string,
+  price?: number
+): boolean {
+  if (priceType === 'paid') {
+    return price !== undefined && price !== null && price > 0;
+  }
+  if (priceType === 'free') {
+    return price === undefined || price === null || price === 0;
+  }
+  return true;
+}
+
