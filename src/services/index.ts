@@ -20,3 +20,9 @@ export * from './ai/aiService';
 
 // Analytics Service
 export * from './analytics/analyticsService';
+
+// Wishlist Service
+export * from './wishlist/wishlistService';
+
+// Review Service
+export * from './review/reviewService';
