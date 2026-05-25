@@ -19,6 +19,7 @@ import {
 import { db } from '../../firebase/config';
 import { Event, CreateEventData, UpdateEventData } from '../../types/event';
 import { COLLECTIONS } from '../../constants/collections';
+import { isValidEventPrice } from '../../utils/validationUtils';
 
 /**
  * Event filters interface
@@ -41,6 +42,14 @@ export async function createEvent(
   organizerId: string
 ): Promise<Event> {
   try {
+    if (eventData.priceType && !isValidEventPrice(eventData.priceType, eventData.price)) {
+      throw new Error(
+        eventData.priceType === 'paid'
+          ? 'Paid events must have a price greater than 0'
+          : 'Free events cannot have a price greater than 0'
+      );
+    }
+
     const eventWithMetadata = {
       ...eventData,
       tags: eventData.tags ?? [],
@@ -204,6 +213,25 @@ export async function updateEvent(
 ): Promise<void> {
   try {
     const eventRef = doc(db, COLLECTIONS.EVENTS, eventId);
+
+    // Fetch current event to validate pricing combinations under updates
+    const currentEventSnap = await getDoc(eventRef);
+    if (!currentEventSnap.exists()) {
+      throw new Error(`Event not found for id: ${eventId}`);
+    }
+    const currentEvent = currentEventSnap.data() as Event;
+
+    const finalPriceType = eventData.priceType ?? currentEvent.priceType;
+    const finalPrice = eventData.price !== undefined ? eventData.price : currentEvent.price;
+
+    if (finalPriceType && !isValidEventPrice(finalPriceType, finalPrice)) {
+      throw new Error(
+        finalPriceType === 'paid'
+          ? 'Paid events must have a price greater than 0'
+          : 'Free events cannot have a price greater than 0'
+      );
+    }
+
     await updateDoc(eventRef, {
       ...eventData,
       updatedAt: Timestamp.now(),
